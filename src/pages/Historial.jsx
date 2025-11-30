@@ -48,29 +48,31 @@ export default function Historial() {
   });
 
   const verSerie = async (archivo) => {
-    if (!archivo.session_id) return;
+  if (!archivo.session_id) return;
 
-    const mappingUrl = `${API}/static/series/${archivo.session_id}/mapping.json`;
+  const mappingUrl = `${API}/static/series/${archivo.session_id}/mapping.json`;
 
-    try {
-      const res = await fetch(mappingUrl);
-      if (!res.ok) {
-        console.error("No se encontró el mapping.json");
-        return;
-      }
-
-      const mapping = await res.json();
-      const imagePaths = Object.keys(mapping).map(
-        (nombre) => `${API}/static/series/${archivo.session_id}/${nombre}`
-      );
-
-      navigate(`/visor/${archivo.session_id}`, {
-        state: { images: imagePaths, source: "historial" },
-      });
-    } catch (error) {
-      console.error("Error cargando mapping desde archivo:", error);
+  try {
+    const res = await fetch(mappingUrl);
+    if (!res.ok) {
+      console.error("No se encontró el mapping.json");
+      return;
     }
-  };
+
+    const mapping = await res.json();
+
+    // 🔥 CORREGIDO: usar mapping[*].png_name, NO la llave
+    const imagePaths = Object.values(mapping).map(
+      (item) => `/static/series/${archivo.session_id}/${item.png_name}`
+    );
+
+    navigate(`/visor/${archivo.session_id}`, {
+      state: { images: imagePaths, source: "historial" },
+    });
+  } catch (error) {
+    console.error("Error cargando mapping desde archivo:", error);
+  }
+};
 
   const eliminarSerie = async (session_id, hasSegmentations) => {
     if (hasSegmentations) {

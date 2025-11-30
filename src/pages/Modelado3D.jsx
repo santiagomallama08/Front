@@ -213,6 +213,7 @@ export default function Modelado3D() {
   // Encontrar caras dentro del polígono - SOLO SUPERFICIE VISIBLE
   // --------------------------------------------------------------------
   // --------------------------------------------------------------------
+// --------------------------------------------------------------------
   // Encontrar caras dentro del polígono - SOLO SUPERFICIE FRONTAL VISIBLE
   // --------------------------------------------------------------------
   const getFacesInSelection = (mesh, points) => {
@@ -246,7 +247,7 @@ export default function Modelado3D() {
       return new THREE.Vector2(rel.dot(cameraRight), rel.dot(cameraUp));
     });
 
-    // Calcular bounds del polígono
+    // Calcular bounds del polígono con margen generoso
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     polygon2D.forEach(p => {
@@ -256,7 +257,7 @@ export default function Modelado3D() {
       maxY = Math.max(maxY, p.y);
     });
 
-    const margin = Math.max(maxX - minX, maxY - minY) * 0.2;
+    const margin = Math.max(maxX - minX, maxY - minY) * 0.3;
 
     // Función de punto en polígono 2D
     const isPointInPolygon = (point2D, polygon) => {
@@ -273,8 +274,8 @@ export default function Modelado3D() {
       return inside;
     };
 
-    // Crear un raycaster temporal para validar visibilidad
-    const tempRaycaster = new THREE.Raycaster();
+    // Distancia desde cámara al centro de selección
+    const distanceToCenter = camera.position.distanceTo(center);
 
     // Verificar cada cara del modelo
     for (let i = 0; i < positions.length / 9; i++) {
@@ -296,22 +297,14 @@ export default function Modelado3D() {
       const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
 
       const facingCamera = faceNormal.dot(viewDirection);
-      if (facingCamera < 0.1) continue; // Solo caras que miran hacia la cámara
+      if (facingCamera < -0.1) continue; // Rechazar caras que miran hacia atrás
 
-      // ✅ FILTRO 2: Verificar que la cara sea VISIBLE desde la cámara (no ocluida)
-      const directionToCamera = new THREE.Vector3()
-        .subVectors(camera.position, faceCenter)
-        .normalize();
+      // ✅ FILTRO 2: La cara debe estar en el rango de profundidad correcto
+      const distanceToFace = camera.position.distanceTo(faceCenter);
+      const depthDifference = distanceToFace - distanceToCenter;
       
-      tempRaycaster.set(faceCenter, directionToCamera);
-      const intersects = tempRaycaster.intersectObject(mesh, false);
-      
-      // Si hay intersecciones más cercanas a la cámara, esta cara está oculta
-      if (intersects.length > 0 && intersects[0].distance < 0.1) {
-        // La primera intersección es la cara misma, está visible
-      } else if (intersects.length > 1) {
-        continue; // Hay algo bloqueando esta cara
-      }
+      // Solo caras que están cerca del plano de selección (±15 unidades)
+      if (Math.abs(depthDifference) > 15) continue;
 
       // ✅ FILTRO 3: Proyectar a 2D y verificar si está dentro del polígono
       const relPos = new THREE.Vector3().subVectors(faceCenter, center);
@@ -334,8 +327,6 @@ export default function Modelado3D() {
 
     return selectedFaces;
   };
-  // --------------------------------------------------------------------
-  // Exportación STL solo de la región seleccionada - CORREGIDA
   // --------------------------------------------------------------------
   const exportSelected = () => {
     if (!currentMesh || selectedPoints.length < 3) {
