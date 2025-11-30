@@ -321,7 +321,7 @@ export default function Pacientes() {
           </div>
         ) : pacientesFiltrados.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8 text-center">
-            <div className="text-6xl mb-4">👥</div>
+            <div className="text-6xl mb-4"></div>
             <p className="text-lg text-gray-800 mb-2">
               {filtro ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}
             </p>

@@ -230,7 +230,7 @@ export default function ExportacionSTL() {
 
         {!cargando && series.length === 0 && (
           <div className="bg-white border border-gray-200 rounded-xl p-8 sm:p-12 text-center shadow-md">
-            <div className="text-6xl mb-4">📁</div>
+            <div className="text-6xl mb-4"></div>
             <p className="text-lg sm:text-xl text-gray-800 mb-2">No hay series disponibles</p>
             <p className="text-sm text-gray-500 mb-6">
               Sube tu primera serie DICOM para comenzar
