@@ -25,7 +25,7 @@ export default function Modelado3D() {
   const mouse = useRef(new THREE.Vector2());
 
   // --------------------------------------------------------------------
-  // 1. Inicializar escena - SOLO CÁMARA MEJORADA
+  // 1. Inicializar escena - CÁMARA Y CONTROLES MEJORADOS
   // --------------------------------------------------------------------
   useEffect(() => {
     if (!mountRef.current) return;
@@ -36,9 +36,9 @@ export default function Modelado3D() {
     const _scene = new THREE.Scene();
     _scene.background = new THREE.Color("#050505");
 
-    // ✅ CÁMARA MEJORADA
-    const _camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 5000);
-    _camera.position.set(100, 100, 100);
+    // ✅ CÁMARA MEJORADA - Ángulo y posición óptimos
+    const _camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000);
+    _camera.position.set(120, 80, 120);
 
     const _renderer = new THREE.WebGLRenderer({ antialias: true });
     _renderer.setSize(width, height);
@@ -46,29 +46,34 @@ export default function Modelado3D() {
 
     mountRef.current.appendChild(_renderer.domElement);
 
-    // ✅ ILUMINACIÓN MEJORADA
-    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+    // ✅ ILUMINACIÓN MEJORADA - Tres puntos de luz balanceados
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     _scene.add(ambient);
 
-    const directional = new THREE.DirectionalLight(0xffffff, 0.9);
-    directional.position.set(40, 60, 30);
-    _scene.add(directional);
+    const directional1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directional1.position.set(50, 80, 40);
+    _scene.add(directional1);
 
     const directional2 = new THREE.DirectionalLight(0xffffff, 0.4);
-    directional2.position.set(-40, -20, -30);
+    directional2.position.set(-50, -30, -40);
     _scene.add(directional2);
 
-    // ✅ CONTROLES MEJORADOS
+    const directional3 = new THREE.DirectionalLight(0xffffff, 0.3);
+    directional3.position.set(0, 50, -50);
+    _scene.add(directional3);
+
+    // ✅ CONTROLES OPTIMIZADOS - Suaves y precisos
     const _controls = new OrbitControls(_camera, _renderer.domElement);
     _controls.enableDamping = true;
-    _controls.dampingFactor = 0.08;
+    _controls.dampingFactor = 0.07;
     _controls.enablePan = true;
-    _controls.panSpeed = 0.8;
-    _controls.zoomSpeed = 1.2;
-    _controls.rotateSpeed = 0.6;
-    _controls.minDistance = 20;
-    _controls.maxDistance = 500;
+    _controls.panSpeed = 0.9;
+    _controls.zoomSpeed = 1.0;
+    _controls.rotateSpeed = 0.7;
+    _controls.minDistance = 30;
+    _controls.maxDistance = 400;
     _controls.screenSpacePanning = true;
+    _controls.target.set(0, 0, 0);
 
     setScene(_scene);
     setCamera(_camera);
@@ -142,15 +147,15 @@ export default function Modelado3D() {
     const updatedPoints = [...selectedPoints, point];
     setSelectedPoints(updatedPoints);
 
-    // 🔴 Marcador pequeño y preciso (0.3mm de radio - milimétrico)
-    const markerGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+    // 🔴 Marcador pequeño y preciso
+    const markerGeometry = new THREE.SphereGeometry(0.4, 16, 16);
     const markerMaterial = new THREE.MeshBasicMaterial({
       color: 0xff0000,
       depthTest: false
     });
     const marker = new THREE.Mesh(markerGeometry, markerMaterial);
     marker.position.copy(point);
-    marker.renderOrder = 999; // Renderizar siempre encima
+    marker.renderOrder = 999;
     scene.add(marker);
     setSelectionMarkers(prev => [...prev, marker]);
 
@@ -171,9 +176,8 @@ export default function Modelado3D() {
       setSelectionLines(prev => [...prev, line]);
     }
 
-    // 🟢 Línea verde de cierre (del último al primero)
+    // 🟢 Línea verde de cierre
     if (updatedPoints.length >= 3) {
-      // Remover línea de cierre anterior
       const oldClosingLines = selectionLines.filter(l => l.userData?.closing);
       oldClosingLines.forEach(l => {
         scene.remove(l);
@@ -181,7 +185,6 @@ export default function Modelado3D() {
         if (l.material) l.material.dispose();
       });
 
-      // Crear nueva línea de cierre
       const closingGeometry = new THREE.BufferGeometry().setFromPoints([
         updatedPoints[updatedPoints.length - 1],
         updatedPoints[0]
@@ -198,7 +201,6 @@ export default function Modelado3D() {
       closingLine.renderOrder = 998;
       scene.add(closingLine);
 
-      // Actualizar array de líneas sin las de cierre antiguas
       setSelectionLines(prev => [
         ...prev.filter(l => !l.userData?.closing),
         closingLine
@@ -207,14 +209,7 @@ export default function Modelado3D() {
   };
 
   // --------------------------------------------------------------------
-  // Encontrar caras dentro del polígono - OPTIMIZADO PARA PRÓTESIS CRANEAL
-  // --------------------------------------------------------------------
- // --------------------------------------------------------------------
-  // Encontrar caras dentro del polígono - SOLO SUPERFICIE VISIBLE
-  // --------------------------------------------------------------------
-  // --------------------------------------------------------------------
-// --------------------------------------------------------------------
-  // Encontrar caras dentro del polígono - SOLO SUPERFICIE FRONTAL VISIBLE
+  // ✅ SELECCIÓN CORRECTA - SOLO SUPERFICIE VISIBLE DESDE LA CÁMARA
   // --------------------------------------------------------------------
   const getFacesInSelection = (mesh, points) => {
     if (points.length < 3) return new Set();
@@ -223,31 +218,28 @@ export default function Modelado3D() {
     const positions = geometry.attributes.position.array;
     const selectedFaces = new Set();
 
-    // Calcular centro del polígono de selección
+    // Centro del polígono de selección
     const center = new THREE.Vector3();
     points.forEach(p => center.add(p));
     center.divideScalar(points.length);
 
-    // ✅ Vector desde cámara hacia el centro (dirección de vista)
+    // ✅ Dirección de vista desde la cámara
     const viewDirection = new THREE.Vector3()
       .subVectors(center, camera.position)
       .normalize();
 
-    // Crear sistema de coordenadas 2D basado en la vista de la cámara
-    const cameraRight = new THREE.Vector3();
-    const cameraUp = new THREE.Vector3();
-    
+    // Sistema de coordenadas basado en la cámara
     camera.updateMatrixWorld();
-    cameraRight.setFromMatrixColumn(camera.matrixWorld, 0); // Vector derecha de la cámara
-    cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);     // Vector arriba de la cámara
+    const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const cameraUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
 
-    // Proyectar puntos del polígono a espacio 2D de pantalla
+    // Proyectar puntos a 2D en el espacio de la cámara
     const polygon2D = points.map(p => {
       const rel = new THREE.Vector3().subVectors(p, center);
       return new THREE.Vector2(rel.dot(cameraRight), rel.dot(cameraUp));
     });
 
-    // Calcular bounds del polígono con margen generoso
+    // Bounds del polígono para optimización
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     polygon2D.forEach(p => {
@@ -256,28 +248,25 @@ export default function Modelado3D() {
       minY = Math.min(minY, p.y);
       maxY = Math.max(maxY, p.y);
     });
+    const margin = Math.max(maxX - minX, maxY - minY) * 0.25;
 
-    const margin = Math.max(maxX - minX, maxY - minY) * 0.3;
-
-    // Función de punto en polígono 2D
+    // Función punto en polígono
     const isPointInPolygon = (point2D, polygon) => {
       let inside = false;
       for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
         const xi = polygon[i].x, yi = polygon[i].y;
         const xj = polygon[j].x, yj = polygon[j].y;
-
         const intersect = ((yi > point2D.y) !== (yj > point2D.y)) &&
           (point2D.x < (xj - xi) * (point2D.y - yi) / (yj - yi) + xi);
-
         if (intersect) inside = !inside;
       }
       return inside;
     };
 
-    // Distancia desde cámara al centro de selección
-    const distanceToCenter = camera.position.distanceTo(center);
+    // Distancia de referencia (cámara al centro)
+    const refDistance = camera.position.distanceTo(center);
 
-    // Verificar cada cara del modelo
+    // Verificar cada cara
     for (let i = 0; i < positions.length / 9; i++) {
       const v1 = new THREE.Vector3(positions[i * 9], positions[i * 9 + 1], positions[i * 9 + 2]);
       const v2 = new THREE.Vector3(positions[i * 9 + 3], positions[i * 9 + 4], positions[i * 9 + 5]);
@@ -287,39 +276,32 @@ export default function Modelado3D() {
       v2.applyMatrix4(mesh.matrixWorld);
       v3.applyMatrix4(mesh.matrixWorld);
 
-      const faceCenter = new THREE.Vector3()
-        .add(v1).add(v2).add(v3)
-        .divideScalar(3);
+      const faceCenter = new THREE.Vector3().add(v1).add(v2).add(v3).divideScalar(3);
 
-      // ✅ FILTRO 1: La cara DEBE estar orientada hacia la cámara
+      // ✅ FILTRO 1: Orientación hacia la cámara
       const edge1 = new THREE.Vector3().subVectors(v2, v1);
       const edge2 = new THREE.Vector3().subVectors(v3, v1);
       const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-
-      const facingCamera = faceNormal.dot(viewDirection);
-      if (facingCamera < -0.1) continue; // Rechazar caras que miran hacia atrás
-
-      // ✅ FILTRO 2: La cara debe estar en el rango de profundidad correcto
-      const distanceToFace = camera.position.distanceTo(faceCenter);
-      const depthDifference = distanceToFace - distanceToCenter;
       
-      // Solo caras que están cerca del plano de selección (±15 unidades)
-      if (Math.abs(depthDifference) > 15) continue;
+      const facingCamera = faceNormal.dot(viewDirection);
+      if (facingCamera < -0.15) continue; // Rechazar caras traseras
 
-      // ✅ FILTRO 3: Proyectar a 2D y verificar si está dentro del polígono
+      // ✅ FILTRO 2: Profundidad - solo caras cercanas al plano de selección
+      const faceDistance = camera.position.distanceTo(faceCenter);
+      const depthDiff = faceDistance - refDistance;
+      if (Math.abs(depthDiff) > 12) continue; // Tolerancia de ±12 unidades
+
+      // ✅ FILTRO 3: Proyección 2D
       const relPos = new THREE.Vector3().subVectors(faceCenter, center);
-      const point2D = new THREE.Vector2(
-        relPos.dot(cameraRight),
-        relPos.dot(cameraUp)
-      );
+      const point2D = new THREE.Vector2(relPos.dot(cameraRight), relPos.dot(cameraUp));
 
-      // Quick bounds check
+      // Bounds check rápido
       if (point2D.x < minX - margin || point2D.x > maxX + margin ||
           point2D.y < minY - margin || point2D.y > maxY + margin) {
         continue;
       }
 
-      // ✅ FILTRO 4: Verificar si está dentro del polígono
+      // ✅ FILTRO 4: Dentro del polígono
       if (isPointInPolygon(point2D, polygon2D)) {
         selectedFaces.add(i);
       }
@@ -327,6 +309,9 @@ export default function Modelado3D() {
 
     return selectedFaces;
   };
+
+  // --------------------------------------------------------------------
+  // Exportación STL - CORREGIDA
   // --------------------------------------------------------------------
   const exportSelected = () => {
     if (!currentMesh || selectedPoints.length < 3) {
@@ -334,7 +319,6 @@ export default function Modelado3D() {
       return;
     }
 
-    // Obtener caras dentro del polígono
     const selectedFaces = getFacesInSelection(currentMesh, selectedPoints);
 
     if (selectedFaces.size === 0) {
@@ -342,7 +326,6 @@ export default function Modelado3D() {
       return;
     }
 
-    // Extraer caras seleccionadas
     const geometry = currentMesh.geometry;
     const positions = geometry.attributes.position.array;
     const normals = geometry.attributes.normal ? geometry.attributes.normal.array : null;
@@ -350,7 +333,6 @@ export default function Modelado3D() {
     const selectedPositions = [];
     const selectedNormals = [];
 
-    // Crear matriz de transformación completa del mesh original
     const transformMatrix = new THREE.Matrix4();
     transformMatrix.compose(
       currentMesh.position,
@@ -359,40 +341,30 @@ export default function Modelado3D() {
     );
 
     selectedFaces.forEach(faceIndex => {
-      // Extraer los 3 vértices de la cara
       for (let j = 0; j < 3; j++) {
         const idx = faceIndex * 9 + j * 3;
 
-        // Obtener posición del vértice
         const vertex = new THREE.Vector3(
           positions[idx],
           positions[idx + 1],
           positions[idx + 2]
         );
-
-        // Aplicar transformaciones del mesh original
         vertex.applyMatrix4(transformMatrix);
-
         selectedPositions.push(vertex.x, vertex.y, vertex.z);
 
-        // Obtener y transformar normales si existen
         if (normals) {
           const normal = new THREE.Vector3(
             normals[idx],
             normals[idx + 1],
             normals[idx + 2]
           );
-
-          // Las normales solo necesitan rotación y escala, no traslación
           const normalMatrix = new THREE.Matrix3().getNormalMatrix(transformMatrix);
           normal.applyMatrix3(normalMatrix).normalize();
-
           selectedNormals.push(normal.x, normal.y, normal.z);
         }
       }
     });
 
-    // Crear geometría con las caras seleccionadas YA TRANSFORMADAS
     const newGeometry = new THREE.BufferGeometry();
     newGeometry.setAttribute('position', new THREE.Float32BufferAttribute(selectedPositions, 3));
 
@@ -400,17 +372,13 @@ export default function Modelado3D() {
       newGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(selectedNormals, 3));
     }
 
-    // Recalcular normales para suavizado
     newGeometry.computeVertexNormals();
 
-    // Crear mesh temporal SIN transformaciones adicionales (ya están aplicadas)
     const tempMesh = new THREE.Mesh(
       newGeometry,
       new THREE.MeshStandardMaterial({ color: 0xffffff })
     );
-    // NO aplicar transformaciones aquí porque ya están en los vértices
 
-    // Exportar a STL
     const exporter = new STLExporter();
     const stlString = exporter.parse(tempMesh, { binary: false });
 
@@ -421,7 +389,6 @@ export default function Modelado3D() {
     a.click();
     URL.revokeObjectURL(a.href);
 
-    // Limpiar mesh temporal
     tempMesh.geometry.dispose();
     tempMesh.material.dispose();
 
@@ -467,8 +434,8 @@ export default function Modelado3D() {
         geometry,
         new THREE.MeshStandardMaterial({
           color: 0xf2f2f2,
-          roughness: 0.85,
-          metalness: 0.1
+          roughness: 0.8,
+          metalness: 0.15
         })
       );
 
@@ -490,20 +457,18 @@ export default function Modelado3D() {
         size: size.toFixed(2)
       });
 
-      // ✅ AJUSTE AUTOMÁTICO DE CÁMARA MEJORADO
+      // ✅ AJUSTE AUTOMÁTICO DE CÁMARA
       if (controls && camera) {
         controls.target.set(0, 0, 0);
         
-        // Calcular distancia óptima basada en el tamaño del modelo
         const fov = camera.fov * (Math.PI / 180);
         const maxDim = Math.max(sizeVector.x, sizeVector.y, sizeVector.z) * (80 / size);
-        const optimalDistance = maxDim / Math.tan(fov / 2) * 1.3;
+        const optimalDistance = (maxDim / Math.tan(fov / 2)) * 1.4;
         
-        // Posicionar cámara en ángulo diagonal óptimo
-        const angle = Math.PI / 4; // 45 grados
+        const angle = Math.PI / 4;
         camera.position.set(
           optimalDistance * Math.cos(angle),
-          optimalDistance * 0.7,
+          optimalDistance * 0.6,
           optimalDistance * Math.sin(angle)
         );
         
@@ -515,16 +480,15 @@ export default function Modelado3D() {
   };
 
   // --------------------------------------------------------------------
-  // Listener - Permitir rotación en modo selección
+  // Listener
   // --------------------------------------------------------------------
   useEffect(() => {
     if (!renderer || !controls) return;
 
     const canvas = renderer.domElement;
 
-    // Habilitar controles en modo selección
     if (selectionMode) {
-      controls.enabled = true; // Siempre permitir rotar
+      controls.enabled = true;
     }
 
     canvas.addEventListener("click", handleCanvasClick);
@@ -545,7 +509,7 @@ export default function Modelado3D() {
       {/* BOTONES */}
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <label className="bg-purple-600 hover:bg-purple-700 transition px-4 py-2 rounded cursor-pointer text-sm text-white">
-           Subir modelo STL
+          📁 Subir modelo STL
           <input type="file" accept=".stl" className="hidden" onChange={handleFileUpload} />
         </label>
 
@@ -554,7 +518,7 @@ export default function Modelado3D() {
           disabled={!currentMesh}
           className="bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:opacity-50 transition px-4 py-2 rounded text-sm text-white"
         >
-           Eliminar Modelo
+          🗑️ Eliminar Modelo
         </button>
 
         <button
@@ -563,7 +527,7 @@ export default function Modelado3D() {
           className={`px-4 py-2 rounded text-sm font-medium transition ${selectionMode ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-600"
             } ${!currentMesh ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          {selectionMode ? "✓ Modo Selección ON" : " Modo Selección OFF"}
+          {selectionMode ? "✓ Modo Selección ON" : "📍 Modo Selección OFF"}
         </button>
 
         <button
@@ -571,7 +535,7 @@ export default function Modelado3D() {
           disabled={selectedPoints.length === 0}
           className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 disabled:opacity-50 transition px-4 py-2 rounded text-sm text-white"
         >
-           Limpiar ({selectedPoints.length})
+          🧹 Limpiar ({selectedPoints.length})
         </button>
 
         <button
@@ -579,16 +543,16 @@ export default function Modelado3D() {
           disabled={selectedPoints.length < 3}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:opacity-50 transition px-4 py-2 rounded text-sm text-white font-medium"
         >
-           Exportar Prótesis ({selectedPoints.length})
+          💾 Exportar Prótesis ({selectedPoints.length})
         </button>
       </div>
 
       {/* Instrucciones */}
       <div className="text-xs text-gray-400 mb-3">
-        🖱 <strong>Controles:</strong> Rotar: clic izquierdo + arrastrar · Zoom: scroll o rueda · Pan: clic derecho + arrastrar
+        🖱 <strong>Controles:</strong> Rotar: clic izquierdo + arrastrar · Zoom: scroll · Pan: clic derecho + arrastrar
         {selectionMode && (
           <span className="text-green-400 ml-2">
-            · <strong>Modo Activo:</strong> Clic simple para marcar puntos | Puedes rotar libremente
+            · <strong>Modo Activo:</strong> Clic para marcar puntos | Rotar libremente con clic izquierdo
           </span>
         )}
       </div>
@@ -596,7 +560,7 @@ export default function Modelado3D() {
       {/* DIMENSIONES */}
       {modelDimensions && (
         <div className="mb-4 bg-gray-800 p-4 border border-gray-700 rounded-lg shadow-lg">
-          <h3 className="text-sm font-semibold mb-3 text-white"> Dimensiones del Modelo</h3>
+          <h3 className="text-sm font-semibold mb-3 text-white">📏 Dimensiones del Modelo</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div className="bg-purple-900/30 border border-purple-500/30 px-3 py-2 rounded-lg">
               <span className="text-purple-400 font-semibold block mb-1">Ancho:</span>
