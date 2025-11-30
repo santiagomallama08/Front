@@ -219,7 +219,7 @@ export default function Modelado3D() {
   };
 
   // --------------------------------------------------------------------
-  // ✅ SELECCIÓN ULTRA PRECISA - SOLO SUPERFICIE EXACTA VISIBLE
+  // ✅ SELECCIÓN PRECISA Y RÁPIDA - SOLO SUPERFICIE VISIBLE
   // --------------------------------------------------------------------
   const getFacesInSelection = (mesh, points) => {
     if (points.length < 3) return new Set();
@@ -233,23 +233,23 @@ export default function Modelado3D() {
     points.forEach(p => center.add(p));
     center.divideScalar(points.length);
 
-    // ✅ Vector de vista EXACTO desde cámara
+    // ✅ Vector de vista desde cámara
     camera.updateMatrixWorld();
     const cameraDirection = new THREE.Vector3();
     camera.getWorldDirection(cameraDirection);
-    cameraDirection.negate(); // Invertir para apuntar hacia donde mira la cámara
+    cameraDirection.negate();
 
     // Sistema de coordenadas de la cámara
     const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
     const cameraUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
 
-    // Proyectar puntos de selección a 2D (plano de la cámara)
+    // Proyectar puntos a 2D
     const polygon2D = points.map(p => {
       const rel = new THREE.Vector3().subVectors(p, center);
       return new THREE.Vector2(rel.dot(cameraRight), rel.dot(cameraUp));
     });
 
-    // Bounds del polígono (sin margen extra)
+    // Bounds del polígono
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     polygon2D.forEach(p => {
@@ -259,7 +259,7 @@ export default function Modelado3D() {
       maxY = Math.max(maxY, p.y);
     });
 
-    // Función punto en polígono (Ray Casting)
+    // Función punto en polígono
     const isPointInPolygon = (point2D, polygon) => {
       let inside = false;
       for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -272,89 +272,59 @@ export default function Modelado3D() {
       return inside;
     };
 
-    // ✅ PLANO DE SELECCIÓN - Definido por los puntos seleccionados
-    const selectionPlaneNormal = cameraDirection.clone().normalize();
-    const selectionPlaneConstant = -selectionPlaneNormal.dot(center);
-
-    // Radio máximo del polígono (para filtro de distancia)
+    // Radio máximo y distancia promedio
     let maxRadius = 0;
+    let avgDistance = 0;
     points.forEach(p => {
       const dist = center.distanceTo(p);
       if (dist > maxRadius) maxRadius = dist;
-    });
-
-    // Distancia promedio de puntos seleccionados a la cámara
-    let avgDistance = 0;
-    points.forEach(p => {
       avgDistance += camera.position.distanceTo(p);
     });
     avgDistance /= points.length;
 
-    // ✅ TOLERANCIA DINÁMICA basada en tamaño de selección
-    const depthTolerance = Math.max(5, maxRadius * 0.3);
+    const depthTolerance = Math.max(6, maxRadius * 0.35);
 
-    // Verificar cada cara del modelo
+    // Verificar cada cara
     for (let i = 0; i < positions.length / 9; i++) {
-      // Obtener vértices de la cara
       const v1 = new THREE.Vector3(positions[i * 9], positions[i * 9 + 1], positions[i * 9 + 2]);
       const v2 = new THREE.Vector3(positions[i * 9 + 3], positions[i * 9 + 4], positions[i * 9 + 5]);
       const v3 = new THREE.Vector3(positions[i * 9 + 6], positions[i * 9 + 7], positions[i * 9 + 8]);
 
-      // Aplicar transformación del mesh
       v1.applyMatrix4(mesh.matrixWorld);
       v2.applyMatrix4(mesh.matrixWorld);
       v3.applyMatrix4(mesh.matrixWorld);
 
-      // Centro de la cara
-      const faceCenter = new THREE.Vector3()
-        .add(v1).add(v2).add(v3)
-        .divideScalar(3);
+      const faceCenter = new THREE.Vector3().add(v1).add(v2).add(v3).divideScalar(3);
 
-      // ✅ FILTRO 1: Distancia al centro de selección
+      // FILTRO 1: Distancia al centro
       const distToCenter = faceCenter.distanceTo(center);
-      if (distToCenter > maxRadius * 1.8) continue; // Rechazar caras muy lejanas
+      if (distToCenter > maxRadius * 1.5) continue;
 
-      // ✅ FILTRO 2: Normal de la cara - debe mirar hacia la cámara
+      // FILTRO 2: Normal hacia cámara
       const edge1 = new THREE.Vector3().subVectors(v2, v1);
       const edge2 = new THREE.Vector3().subVectors(v3, v1);
       const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
       
       const viewAngle = faceNormal.dot(cameraDirection);
-      if (viewAngle > 0.2) continue; // Rechazar caras que NO miran hacia la cámara
+      if (viewAngle > 0.1) continue;
 
-      // ✅ FILTRO 3: Profundidad - solo caras en el plano de selección
+      // FILTRO 3: Profundidad
       const faceDistance = camera.position.distanceTo(faceCenter);
       const depthDiff = Math.abs(faceDistance - avgDistance);
-      if (depthDiff > depthTolerance) continue; // Rechazar caras detrás/delante
+      if (depthDiff > depthTolerance) continue;
 
-      // ✅ FILTRO 4: Verificar oclusión con Raycaster
-      raycaster.current.set(camera.position, 
-        new THREE.Vector3().subVectors(faceCenter, camera.position).normalize()
-      );
-      const intersects = raycaster.current.intersectObject(mesh);
-      if (intersects.length > 0) {
-        const firstHit = intersects[0].point;
-        const distToFirstHit = camera.position.distanceTo(firstHit);
-        const distToFace = camera.position.distanceTo(faceCenter);
-        
-        // Si hay algo delante de esta cara, descartarla
-        if (distToFirstHit < distToFace - 2) continue;
-      }
-
-      // ✅ FILTRO 5: Proyección 2D - dentro del polígono
+      // FILTRO 4: Proyección 2D
       const relPos = new THREE.Vector3().subVectors(faceCenter, center);
       const point2D = new THREE.Vector2(
         relPos.dot(cameraRight),
         relPos.dot(cameraUp)
       );
 
-      // Quick bounds check
       if (point2D.x < minX || point2D.x > maxX ||
           point2D.y < minY || point2D.y > maxY) {
         continue;
       }
 
-      // Verificar si está dentro del polígono
       if (isPointInPolygon(point2D, polygon2D)) {
         selectedFaces.add(i);
       }
