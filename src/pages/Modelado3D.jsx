@@ -569,7 +569,7 @@ export default function Modelado3D() {
           disabled={selectedPoints.length === 0}
           className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 disabled:opacity-50 transition px-4 py-2 rounded text-sm text-white"
         >
-          🧹 Limpiar ({selectedPoints.length})
+           Limpiar ({selectedPoints.length})
         </button>
 
         <button
@@ -577,7 +577,7 @@ export default function Modelado3D() {
           disabled={selectedPoints.length < 3}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:opacity-50 transition px-4 py-2 rounded text-sm text-white font-medium"
         >
-          💾 Exportar Prótesis ({selectedPoints.length})
+           Exportar Prótesis ({selectedPoints.length})
         </button>
       </div>
 

@@ -40,7 +40,7 @@ const features = [
 const ArrowLeft = ({ onClick }) => (
   <div
     className="absolute -left-6 top-1/2 transform -translate-y-1/2 
-               z-10 cursor-pointer text-gray-400 hover:text-[#00e5ff] transition"
+               z-10 cursor-pointer text-gray-500 hover:text-[#B01FFF] transition"
     onClick={onClick}
   >
     <MdArrowBackIos size={28} />
@@ -50,7 +50,7 @@ const ArrowLeft = ({ onClick }) => (
 const ArrowRight = ({ onClick }) => (
   <div
     className="absolute -right-6 top-1/2 transform -translate-y-1/2 
-               z-10 cursor-pointer text-gray-400 hover:text-[#00e5ff] transition"
+               z-10 cursor-pointer text-gray-500 hover:text-[#B01FFF] transition"
     onClick={onClick}
   >
     <MdArrowForwardIos size={28} />
@@ -98,45 +98,39 @@ const FeaturesCarousel = () => {
         <Slider {...settings}>
           {features.map((f, i) => (
             <div key={i} className="px-4">
-              {/* CARD NEON */}
+
+              {/* ========== CARD CON HALO MORADO SUAVE (PERFECTO) ========== */}
               <div
                 className="
                   group relative flex flex-col items-center justify-center
                   rounded-2xl p-8 text-center h-80
 
-                  bg-[#001014]               
-                  border border-[#00e5ff50]
-                  shadow-[0_0_15px_#00e5ff30]
+                  bg-[#0A0A0A]
+                  bg-[radial-gradient(circle_at_top,rgba(176,31,255,0.25)_0%,rgba(0,0,0,0)_70%)]
+
+                  border border-[rgba(176,31,255,0.25)]
+                  shadow-[0_0_20px_rgba(176,31,255,0.15)]
 
                   transition-all duration-300
-                  hover:shadow-[0_0_35px_#00e5ffA0]
-                  hover:border-[#00e5ffA0]
+                  hover:shadow-[0_0_35px_rgba(176,31,255,0.35)]
                   hover:-translate-y-2
                   overflow-hidden
                 "
               >
-                {/* Glow interno */}
-                <div className="
-                    absolute inset-0 rounded-2xl blur-xl opacity-30
-                    bg-[radial-gradient(circle,_rgba(0,229,255,0.6)_0%,_rgba(0,0,0,0)_70%)]
-                " />
-
-                {/* Glow externo */}
-                <div className="
-                    absolute inset-0 rounded-2xl blur-2xl opacity-25
-                    bg-[radial-gradient(circle,_rgba(0,229,255,0.4)_0%,_rgba(0,0,0,0)_80%)]
-                " />
-
-                {/* Contenido */}
-                <div className="relative z-10">
-                  <div className="text-[#00e5ff] mb-4">{f.icon}</div>
-
-                  <h3 className="text-white font-semibold text-xl mb-2">
-                    {f.title}
-                  </h3>
-
-                  <p className="text-gray-300 text-sm">{f.desc}</p>
+                {/* Ícono */}
+                <div className="relative z-20 text-[#B01FFF] mb-4">
+                  {f.icon}
                 </div>
+
+                {/* Título */}
+                <h3 className="relative z-20 text-white font-semibold text-xl mb-2">
+                  {f.title}
+                </h3>
+
+                {/* Descripción */}
+                <p className="relative z-20 text-gray-300 text-sm">
+                  {f.desc}
+                </p>
               </div>
 
             </div>
