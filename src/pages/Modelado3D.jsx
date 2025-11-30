@@ -209,6 +209,9 @@ export default function Modelado3D() {
   // --------------------------------------------------------------------
   // Encontrar caras dentro del polígono - OPTIMIZADO PARA PRÓTESIS CRANEAL
   // --------------------------------------------------------------------
+ // --------------------------------------------------------------------
+  // Encontrar caras dentro del polígono - SOLO SUPERFICIE VISIBLE
+  // --------------------------------------------------------------------
   const getFacesInSelection = (mesh, points) => {
     if (points.length < 3) return new Set();
 
@@ -229,6 +232,11 @@ export default function Modelado3D() {
     const center = new THREE.Vector3();
     points.forEach(p => center.add(p));
     center.divideScalar(points.length);
+
+    // ✅ DIRECCIÓN DE VISTA (desde la cámara hacia el centro de selección)
+    const viewDirection = new THREE.Vector3()
+      .subVectors(center, camera.position)
+      .normalize();
 
     // Sistema de coordenadas local
     const right = new THREE.Vector3();
@@ -281,27 +289,31 @@ export default function Modelado3D() {
 
       const faceCenter = new THREE.Vector3().add(v1).add(v2).add(v3).divideScalar(3);
 
-      // FILTRO 1: Distancia al plano (más tolerante para capturar curvatura)
-      const toFace = new THREE.Vector3().subVectors(faceCenter, center);
-      const distToPlane = Math.abs(toFace.dot(planeNormal));
-
-      // Aumentar tolerancia para capturar más profundidad (15mm para prótesis craneal)
-      if (distToPlane > 15) continue;
-
-      // FILTRO 2: Normal de la cara (más permisivo para superficies curvas)
+      // ✅ FILTRO CRÍTICO: Solo caras orientadas hacia la cámara
       const edge1 = new THREE.Vector3().subVectors(v2, v1);
       const edge2 = new THREE.Vector3().subVectors(v3, v1);
       const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
 
-      const alignment = faceNormal.dot(planeNormal);
-      // Aceptar caras con orientación moderada (incluir curvaturas)
-      if (alignment < -0.3) continue;
+      // La cara debe "mirar" hacia la cámara (ángulo > 0)
+      const facingCamera = faceNormal.dot(viewDirection);
+      if (facingCamera <= 0.1) continue; // Rechazar caras traseras y perpendiculares
+
+      // FILTRO 1: Distancia al plano (reducido para superficie visible)
+      const toFace = new THREE.Vector3().subVectors(faceCenter, center);
+      const distToPlane = Math.abs(toFace.dot(planeNormal));
+
+      // Tolerancia ajustada para solo superficie (3-5mm máximo)
+      if (distToPlane > 5) continue;
+
+      // FILTRO 2: La cara debe estar "delante" del plano de selección
+      const depthFromPlane = toFace.dot(viewDirection);
+      if (depthFromPlane < -2) continue; // Rechazar caras detrás del plano
 
       // FILTRO 3: Proyección a 2D
       const relPos = new THREE.Vector3().subVectors(faceCenter, center);
       const point2D = new THREE.Vector2(relPos.dot(right), relPos.dot(up));
 
-      if (point2D.length() > maxDist * 1.15) continue;
+      if (point2D.length() > maxDist * 1.1) continue;
 
       // FILTRO 4: Dentro del polígono
       if (isPointInPolygon(point2D, polygon2D)) {
@@ -311,7 +323,6 @@ export default function Modelado3D() {
 
     return selectedFaces;
   };
-
   // --------------------------------------------------------------------
   // Exportación STL solo de la región seleccionada - CORREGIDA
   // --------------------------------------------------------------------
@@ -532,7 +543,7 @@ export default function Modelado3D() {
       {/* BOTONES */}
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <label className="bg-purple-600 hover:bg-purple-700 transition px-4 py-2 rounded cursor-pointer text-sm text-white">
-          📁 Subir modelo STL
+           Subir modelo STL
           <input type="file" accept=".stl" className="hidden" onChange={handleFileUpload} />
         </label>
 
@@ -541,7 +552,7 @@ export default function Modelado3D() {
           disabled={!currentMesh}
           className="bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:opacity-50 transition px-4 py-2 rounded text-sm text-white"
         >
-          🗑️ Eliminar Modelo
+           Eliminar Modelo
         </button>
 
         <button
@@ -550,7 +561,7 @@ export default function Modelado3D() {
           className={`px-4 py-2 rounded text-sm font-medium transition ${selectionMode ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-600"
             } ${!currentMesh ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          {selectionMode ? "✓ Modo Selección ON" : "📍 Modo Selección OFF"}
+          {selectionMode ? "✓ Modo Selección ON" : " Modo Selección OFF"}
         </button>
 
         <button
@@ -583,7 +594,7 @@ export default function Modelado3D() {
       {/* DIMENSIONES */}
       {modelDimensions && (
         <div className="mb-4 bg-gray-800 p-4 border border-gray-700 rounded-lg shadow-lg">
-          <h3 className="text-sm font-semibold mb-3 text-white">📏 Dimensiones del Modelo</h3>
+          <h3 className="text-sm font-semibold mb-3 text-white"> Dimensiones del Modelo</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div className="bg-purple-900/30 border border-purple-500/30 px-3 py-2 rounded-lg">
               <span className="text-purple-400 font-semibold block mb-1">Ancho:</span>

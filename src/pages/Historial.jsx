@@ -251,7 +251,7 @@ export default function Historial() {
           </div>
         ) : archivosFiltrados.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl shadow-md p-8 sm:p-12 text-center">
-            <div className="text-6xl mb-4">📁</div>
+            <div className="text-6xl mb-4"></div>
             <p className="text-lg sm:text-xl text-gray-800 mb-2">
               No hay archivos disponibles
             </p>

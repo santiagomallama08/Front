@@ -209,7 +209,7 @@ export default function Segmentaciones() {
             {/* SEGMENTACIONES 2D */}
             <section className="mb-8 sm:mb-10">
               <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-gray-900">
-                📊 Segmentaciones 2D
+                 Segmentaciones 2D
               </h2>
 
               {items2D.length === 0 ? (
@@ -285,12 +285,12 @@ export default function Segmentaciones() {
             {/* SEGMENTACIONES 3D */}
             <section className="mb-8 sm:mb-10">
               <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-gray-900">
-                🧊 Segmentaciones 3D
+                 Segmentaciones 3D
               </h2>
 
               {items3D.length === 0 ? (
                 <div className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-center shadow-md">
-                  <div className="text-5xl mb-3">🎯</div>
+                  <div className="text-5xl mb-3"></div>
                   <p className="text-sm sm:text-base text-gray-500">
                     No hay segmentaciones 3D disponibles.
                   </p>
@@ -374,7 +374,7 @@ export default function Segmentaciones() {
                         </div>
 
                         <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs sm:text-sm text-blue-800">
-                          💡 Para generar el modelo STL, ve al módulo{" "}
+                           Para generar el modelo STL, ve al módulo{" "}
                           <strong>"Exportación STL"</strong>
                         </div>
                       </div>
@@ -387,12 +387,12 @@ export default function Segmentaciones() {
             {/* MODELOS STL */}
             <section className="mb-8 sm:mb-10">
               <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-gray-900">
-                📦 Modelos STL generados
+                 Modelos STL generados
               </h2>
 
               {modelos.length === 0 ? (
                 <div className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 text-center shadow-md">
-                  <div className="text-5xl mb-3">🏗️</div>
+                  <div className="text-5xl mb-3"></div>
                   <p className="text-sm sm:text-base text-gray-500 mb-4">
                     No hay modelos STL generados para esta serie.
                   </p>
@@ -401,7 +401,7 @@ export default function Segmentaciones() {
                     onClick={() => navigate("/exportacion-stl")}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#007AFF] via-[#C633FF] to-[#FF4D00] text-white rounded-lg font-semibold hover:opacity-90 transition-opacity shadow-lg"
                   >
-                    🚀 Ir a Exportación STL
+                     Ir a Exportación STL
                   </button>
                 </div>
               ) : (
@@ -470,7 +470,7 @@ export default function Segmentaciones() {
             {(items2D.length + items3D.length > 0) && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 text-center">
                 <p className="text-xs sm:text-sm text-blue-800">
-                  💡 Para eliminar la serie completa, primero borra todas las
+                   Para eliminar la serie completa, primero borra todas las
                   segmentaciones y modelos STL.
                 </p>
               </div>

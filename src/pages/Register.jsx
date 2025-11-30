@@ -4,7 +4,7 @@ import RegisterForm from '../components/auth/RegisterForm';
 import Navbar from '../components/shared/Navbar';
 import Footer from '../components/shared/Footer';
 import ParticlesBackground from '../components/shared/ParticlesBackground';
-import IntroVisual from '../components/auth/IntroVisual'; // 👈 misma animación que login
+import IntroVisual from '../components/auth/IntroVisual'; 
 
 const Register = () => {
   const [showMain, setShowMain] = useState(false);
