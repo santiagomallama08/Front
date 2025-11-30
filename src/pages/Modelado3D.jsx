@@ -212,6 +212,9 @@ export default function Modelado3D() {
  // --------------------------------------------------------------------
   // Encontrar caras dentro del polígono - SOLO SUPERFICIE VISIBLE
   // --------------------------------------------------------------------
+  // --------------------------------------------------------------------
+  // Encontrar caras dentro del polígono - SOLO SUPERFICIE VISIBLE
+  // --------------------------------------------------------------------
   const getFacesInSelection = (mesh, points) => {
     if (points.length < 3) return new Set();
 
@@ -294,26 +297,26 @@ export default function Modelado3D() {
       const edge2 = new THREE.Vector3().subVectors(v3, v1);
       const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
 
-      // La cara debe "mirar" hacia la cámara (ángulo > 0)
+      // La cara debe "mirar" hacia la cámara (más permisivo)
       const facingCamera = faceNormal.dot(viewDirection);
-      if (facingCamera <= 0.1) continue; // Rechazar caras traseras y perpendiculares
+      if (facingCamera <= -0.2) continue; // Rechazar solo caras claramente opuestas
 
-      // FILTRO 1: Distancia al plano (reducido para superficie visible)
+      // FILTRO 1: Distancia al plano (más generoso para capturar curvatura)
       const toFace = new THREE.Vector3().subVectors(faceCenter, center);
       const distToPlane = Math.abs(toFace.dot(planeNormal));
 
-      // Tolerancia ajustada para solo superficie (3-5mm máximo)
-      if (distToPlane > 5) continue;
+      // Aumentar tolerancia para capturar superficie curva (10mm)
+      if (distToPlane > 10) continue;
 
-      // FILTRO 2: La cara debe estar "delante" del plano de selección
+      // FILTRO 2: La cara debe estar "delante" del plano de selección (más permisivo)
       const depthFromPlane = toFace.dot(viewDirection);
-      if (depthFromPlane < -2) continue; // Rechazar caras detrás del plano
+      if (depthFromPlane < -8) continue; // Más tolerante con profundidad
 
-      // FILTRO 3: Proyección a 2D
+      // FILTRO 3: Proyección a 2D (más amplio)
       const relPos = new THREE.Vector3().subVectors(faceCenter, center);
       const point2D = new THREE.Vector2(relPos.dot(right), relPos.dot(up));
 
-      if (point2D.length() > maxDist * 1.1) continue;
+      if (point2D.length() > maxDist * 1.3) continue; // Más área de captura
 
       // FILTRO 4: Dentro del polígono
       if (isPointInPolygon(point2D, polygon2D)) {
