@@ -213,7 +213,7 @@ export default function Modelado3D() {
   // Encontrar caras dentro del polígono - SOLO SUPERFICIE VISIBLE
   // --------------------------------------------------------------------
   // --------------------------------------------------------------------
-  // Encontrar caras dentro del polígono - SOLO SUPERFICIE VISIBLE
+  // Encontrar caras dentro del polígono - SOLO SUPERFICIE FRONTAL VISIBLE
   // --------------------------------------------------------------------
   const getFacesInSelection = (mesh, points) => {
     if (points.length < 3) return new Set();
@@ -222,50 +222,43 @@ export default function Modelado3D() {
     const positions = geometry.attributes.position.array;
     const selectedFaces = new Set();
 
-    // Calcular el plano del polígono de selección
-    const p0 = points[0];
-    const p1 = points[1];
-    const p2 = points[2];
-
-    const v1 = new THREE.Vector3().subVectors(p1, p0);
-    const v2 = new THREE.Vector3().subVectors(p2, p0);
-    const planeNormal = new THREE.Vector3().crossVectors(v1, v2).normalize();
-
-    // Calcular centro del polígono
+    // Calcular centro del polígono de selección
     const center = new THREE.Vector3();
     points.forEach(p => center.add(p));
     center.divideScalar(points.length);
 
-    // ✅ DIRECCIÓN DE VISTA (desde la cámara hacia el centro de selección)
+    // ✅ Vector desde cámara hacia el centro (dirección de vista)
     const viewDirection = new THREE.Vector3()
       .subVectors(center, camera.position)
       .normalize();
 
-    // Sistema de coordenadas local
-    const right = new THREE.Vector3();
-    const up = new THREE.Vector3();
+    // Crear sistema de coordenadas 2D basado en la vista de la cámara
+    const cameraRight = new THREE.Vector3();
+    const cameraUp = new THREE.Vector3();
+    
+    camera.updateMatrixWorld();
+    cameraRight.setFromMatrixColumn(camera.matrixWorld, 0); // Vector derecha de la cámara
+    cameraUp.setFromMatrixColumn(camera.matrixWorld, 1);     // Vector arriba de la cámara
 
-    if (Math.abs(planeNormal.y) < 0.9) {
-      right.crossVectors(new THREE.Vector3(0, 1, 0), planeNormal).normalize();
-    } else {
-      right.crossVectors(new THREE.Vector3(1, 0, 0), planeNormal).normalize();
-    }
-    up.crossVectors(planeNormal, right).normalize();
-
-    // Proyectar puntos del polígono a 2D
+    // Proyectar puntos del polígono a espacio 2D de pantalla
     const polygon2D = points.map(p => {
       const rel = new THREE.Vector3().subVectors(p, center);
-      return new THREE.Vector2(rel.dot(right), rel.dot(up));
+      return new THREE.Vector2(rel.dot(cameraRight), rel.dot(cameraUp));
     });
 
-    // Calcular radio máximo del polígono
-    let maxDist = 0;
+    // Calcular bounds del polígono
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
     polygon2D.forEach(p => {
-      const dist = p.length();
-      if (dist > maxDist) maxDist = dist;
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
     });
 
-    // Función de punto en polígono
+    const margin = Math.max(maxX - minX, maxY - minY) * 0.2;
+
+    // Función de punto en polígono 2D
     const isPointInPolygon = (point2D, polygon) => {
       let inside = false;
       for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -280,6 +273,9 @@ export default function Modelado3D() {
       return inside;
     };
 
+    // Crear un raycaster temporal para validar visibilidad
+    const tempRaycaster = new THREE.Raycaster();
+
     // Verificar cada cara del modelo
     for (let i = 0; i < positions.length / 9; i++) {
       const v1 = new THREE.Vector3(positions[i * 9], positions[i * 9 + 1], positions[i * 9 + 2]);
@@ -290,35 +286,47 @@ export default function Modelado3D() {
       v2.applyMatrix4(mesh.matrixWorld);
       v3.applyMatrix4(mesh.matrixWorld);
 
-      const faceCenter = new THREE.Vector3().add(v1).add(v2).add(v3).divideScalar(3);
+      const faceCenter = new THREE.Vector3()
+        .add(v1).add(v2).add(v3)
+        .divideScalar(3);
 
-      // ✅ FILTRO CRÍTICO: Solo caras orientadas hacia la cámara
+      // ✅ FILTRO 1: La cara DEBE estar orientada hacia la cámara
       const edge1 = new THREE.Vector3().subVectors(v2, v1);
       const edge2 = new THREE.Vector3().subVectors(v3, v1);
       const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
 
-      // La cara debe "mirar" hacia la cámara (más permisivo)
       const facingCamera = faceNormal.dot(viewDirection);
-      if (facingCamera <= -0.2) continue; // Rechazar solo caras claramente opuestas
+      if (facingCamera < 0.1) continue; // Solo caras que miran hacia la cámara
 
-      // FILTRO 1: Distancia al plano (más generoso para capturar curvatura)
-      const toFace = new THREE.Vector3().subVectors(faceCenter, center);
-      const distToPlane = Math.abs(toFace.dot(planeNormal));
+      // ✅ FILTRO 2: Verificar que la cara sea VISIBLE desde la cámara (no ocluida)
+      const directionToCamera = new THREE.Vector3()
+        .subVectors(camera.position, faceCenter)
+        .normalize();
+      
+      tempRaycaster.set(faceCenter, directionToCamera);
+      const intersects = tempRaycaster.intersectObject(mesh, false);
+      
+      // Si hay intersecciones más cercanas a la cámara, esta cara está oculta
+      if (intersects.length > 0 && intersects[0].distance < 0.1) {
+        // La primera intersección es la cara misma, está visible
+      } else if (intersects.length > 1) {
+        continue; // Hay algo bloqueando esta cara
+      }
 
-      // Aumentar tolerancia para capturar superficie curva (10mm)
-      if (distToPlane > 10) continue;
-
-      // FILTRO 2: La cara debe estar "delante" del plano de selección (más permisivo)
-      const depthFromPlane = toFace.dot(viewDirection);
-      if (depthFromPlane < -8) continue; // Más tolerante con profundidad
-
-      // FILTRO 3: Proyección a 2D (más amplio)
+      // ✅ FILTRO 3: Proyectar a 2D y verificar si está dentro del polígono
       const relPos = new THREE.Vector3().subVectors(faceCenter, center);
-      const point2D = new THREE.Vector2(relPos.dot(right), relPos.dot(up));
+      const point2D = new THREE.Vector2(
+        relPos.dot(cameraRight),
+        relPos.dot(cameraUp)
+      );
 
-      if (point2D.length() > maxDist * 1.3) continue; // Más área de captura
+      // Quick bounds check
+      if (point2D.x < minX - margin || point2D.x > maxX + margin ||
+          point2D.y < minY - margin || point2D.y > maxY + margin) {
+        continue;
+      }
 
-      // FILTRO 4: Dentro del polígono
+      // ✅ FILTRO 4: Verificar si está dentro del polígono
       if (isPointInPolygon(point2D, polygon2D)) {
         selectedFaces.add(i);
       }
