@@ -34,11 +34,11 @@ export default function Modelado3D() {
     const height = mountRef.current.clientHeight;
 
     const _scene = new THREE.Scene();
-    _scene.background = new THREE.Color("#050505");
+    _scene.background = new THREE.Color("#0f0f0f");
 
-    // ✅ CÁMARA MEJORADA - Ángulo y posición óptimos
-    const _camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000);
-    _camera.position.set(120, 80, 120);
+    // ✅ CÁMARA PROFESIONAL - Vista óptima para trabajo médico
+    const _camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 5000);
+    _camera.position.set(100, 90, 130);
 
     const _renderer = new THREE.WebGLRenderer({ antialias: true });
     _renderer.setSize(width, height);
@@ -46,34 +46,44 @@ export default function Modelado3D() {
 
     mountRef.current.appendChild(_renderer.domElement);
 
-    // ✅ ILUMINACIÓN MEJORADA - Tres puntos de luz balanceados
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    // ✅ ILUMINACIÓN PROFESIONAL - Simula ambiente quirúrgico
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
     _scene.add(ambient);
 
-    const directional1 = new THREE.DirectionalLight(0xffffff, 0.8);
-    directional1.position.set(50, 80, 40);
-    _scene.add(directional1);
+    // Luz principal (simula luz cenital quirúrgica)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    keyLight.position.set(60, 100, 50);
+    keyLight.castShadow = false;
+    _scene.add(keyLight);
 
-    const directional2 = new THREE.DirectionalLight(0xffffff, 0.4);
-    directional2.position.set(-50, -30, -40);
-    _scene.add(directional2);
+    // Luz de relleno frontal
+    const fillLight = new THREE.DirectionalLight(0xe8f4ff, 0.6);
+    fillLight.position.set(-40, 60, 80);
+    _scene.add(fillLight);
 
-    const directional3 = new THREE.DirectionalLight(0xffffff, 0.3);
-    directional3.position.set(0, 50, -50);
-    _scene.add(directional3);
+    // Luz trasera para definir bordes
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    rimLight.position.set(0, 30, -70);
+    _scene.add(rimLight);
 
-    // ✅ CONTROLES OPTIMIZADOS - Suaves y precisos
+    // Luz inferior suave para eliminar sombras duras
+    const bottomLight = new THREE.DirectionalLight(0xb8d4ff, 0.3);
+    bottomLight.position.set(0, -40, 0);
+    _scene.add(bottomLight);
+
+    // ✅ CONTROLES MEJORADOS - Experiencia fluida y profesional
     const _controls = new OrbitControls(_camera, _renderer.domElement);
     _controls.enableDamping = true;
-    _controls.dampingFactor = 0.07;
+    _controls.dampingFactor = 0.08;
     _controls.enablePan = true;
-    _controls.panSpeed = 0.9;
-    _controls.zoomSpeed = 1.0;
-    _controls.rotateSpeed = 0.7;
-    _controls.minDistance = 30;
-    _controls.maxDistance = 400;
+    _controls.panSpeed = 1.2;
+    _controls.zoomSpeed = 1.3;
+    _controls.rotateSpeed = 0.6;
+    _controls.minDistance = 40;
+    _controls.maxDistance = 450;
     _controls.screenSpacePanning = true;
     _controls.target.set(0, 0, 0);
+    _controls.maxPolarAngle = Math.PI * 0.95; // Evita que la cámara pase por debajo
 
     setScene(_scene);
     setCamera(_camera);
@@ -209,7 +219,7 @@ export default function Modelado3D() {
   };
 
   // --------------------------------------------------------------------
-  // ✅ SELECCIÓN CORRECTA - SOLO SUPERFICIE VISIBLE DESDE LA CÁMARA
+  // ✅ SELECCIÓN ULTRA PRECISA - SOLO SUPERFICIE EXACTA VISIBLE
   // --------------------------------------------------------------------
   const getFacesInSelection = (mesh, points) => {
     if (points.length < 3) return new Set();
@@ -223,23 +233,23 @@ export default function Modelado3D() {
     points.forEach(p => center.add(p));
     center.divideScalar(points.length);
 
-    // ✅ Dirección de vista desde la cámara
-    const viewDirection = new THREE.Vector3()
-      .subVectors(center, camera.position)
-      .normalize();
-
-    // Sistema de coordenadas basado en la cámara
+    // ✅ Vector de vista EXACTO desde cámara
     camera.updateMatrixWorld();
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    cameraDirection.negate(); // Invertir para apuntar hacia donde mira la cámara
+
+    // Sistema de coordenadas de la cámara
     const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
     const cameraUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
 
-    // Proyectar puntos a 2D en el espacio de la cámara
+    // Proyectar puntos de selección a 2D (plano de la cámara)
     const polygon2D = points.map(p => {
       const rel = new THREE.Vector3().subVectors(p, center);
       return new THREE.Vector2(rel.dot(cameraRight), rel.dot(cameraUp));
     });
 
-    // Bounds del polígono para optimización
+    // Bounds del polígono (sin margen extra)
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     polygon2D.forEach(p => {
@@ -248,9 +258,8 @@ export default function Modelado3D() {
       minY = Math.min(minY, p.y);
       maxY = Math.max(maxY, p.y);
     });
-    const margin = Math.max(maxX - minX, maxY - minY) * 0.25;
 
-    // Función punto en polígono
+    // Función punto en polígono (Ray Casting)
     const isPointInPolygon = (point2D, polygon) => {
       let inside = false;
       for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -263,45 +272,89 @@ export default function Modelado3D() {
       return inside;
     };
 
-    // Distancia de referencia (cámara al centro)
-    const refDistance = camera.position.distanceTo(center);
+    // ✅ PLANO DE SELECCIÓN - Definido por los puntos seleccionados
+    const selectionPlaneNormal = cameraDirection.clone().normalize();
+    const selectionPlaneConstant = -selectionPlaneNormal.dot(center);
 
-    // Verificar cada cara
+    // Radio máximo del polígono (para filtro de distancia)
+    let maxRadius = 0;
+    points.forEach(p => {
+      const dist = center.distanceTo(p);
+      if (dist > maxRadius) maxRadius = dist;
+    });
+
+    // Distancia promedio de puntos seleccionados a la cámara
+    let avgDistance = 0;
+    points.forEach(p => {
+      avgDistance += camera.position.distanceTo(p);
+    });
+    avgDistance /= points.length;
+
+    // ✅ TOLERANCIA DINÁMICA basada en tamaño de selección
+    const depthTolerance = Math.max(5, maxRadius * 0.3);
+
+    // Verificar cada cara del modelo
     for (let i = 0; i < positions.length / 9; i++) {
+      // Obtener vértices de la cara
       const v1 = new THREE.Vector3(positions[i * 9], positions[i * 9 + 1], positions[i * 9 + 2]);
       const v2 = new THREE.Vector3(positions[i * 9 + 3], positions[i * 9 + 4], positions[i * 9 + 5]);
       const v3 = new THREE.Vector3(positions[i * 9 + 6], positions[i * 9 + 7], positions[i * 9 + 8]);
 
+      // Aplicar transformación del mesh
       v1.applyMatrix4(mesh.matrixWorld);
       v2.applyMatrix4(mesh.matrixWorld);
       v3.applyMatrix4(mesh.matrixWorld);
 
-      const faceCenter = new THREE.Vector3().add(v1).add(v2).add(v3).divideScalar(3);
+      // Centro de la cara
+      const faceCenter = new THREE.Vector3()
+        .add(v1).add(v2).add(v3)
+        .divideScalar(3);
 
-      // ✅ FILTRO 1: Orientación hacia la cámara
+      // ✅ FILTRO 1: Distancia al centro de selección
+      const distToCenter = faceCenter.distanceTo(center);
+      if (distToCenter > maxRadius * 1.8) continue; // Rechazar caras muy lejanas
+
+      // ✅ FILTRO 2: Normal de la cara - debe mirar hacia la cámara
       const edge1 = new THREE.Vector3().subVectors(v2, v1);
       const edge2 = new THREE.Vector3().subVectors(v3, v1);
       const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
       
-      const facingCamera = faceNormal.dot(viewDirection);
-      if (facingCamera < -0.15) continue; // Rechazar caras traseras
+      const viewAngle = faceNormal.dot(cameraDirection);
+      if (viewAngle > 0.2) continue; // Rechazar caras que NO miran hacia la cámara
 
-      // ✅ FILTRO 2: Profundidad - solo caras cercanas al plano de selección
+      // ✅ FILTRO 3: Profundidad - solo caras en el plano de selección
       const faceDistance = camera.position.distanceTo(faceCenter);
-      const depthDiff = faceDistance - refDistance;
-      if (Math.abs(depthDiff) > 12) continue; // Tolerancia de ±12 unidades
+      const depthDiff = Math.abs(faceDistance - avgDistance);
+      if (depthDiff > depthTolerance) continue; // Rechazar caras detrás/delante
 
-      // ✅ FILTRO 3: Proyección 2D
+      // ✅ FILTRO 4: Verificar oclusión con Raycaster
+      raycaster.current.set(camera.position, 
+        new THREE.Vector3().subVectors(faceCenter, camera.position).normalize()
+      );
+      const intersects = raycaster.current.intersectObject(mesh);
+      if (intersects.length > 0) {
+        const firstHit = intersects[0].point;
+        const distToFirstHit = camera.position.distanceTo(firstHit);
+        const distToFace = camera.position.distanceTo(faceCenter);
+        
+        // Si hay algo delante de esta cara, descartarla
+        if (distToFirstHit < distToFace - 2) continue;
+      }
+
+      // ✅ FILTRO 5: Proyección 2D - dentro del polígono
       const relPos = new THREE.Vector3().subVectors(faceCenter, center);
-      const point2D = new THREE.Vector2(relPos.dot(cameraRight), relPos.dot(cameraUp));
+      const point2D = new THREE.Vector2(
+        relPos.dot(cameraRight),
+        relPos.dot(cameraUp)
+      );
 
-      // Bounds check rápido
-      if (point2D.x < minX - margin || point2D.x > maxX + margin ||
-          point2D.y < minY - margin || point2D.y > maxY + margin) {
+      // Quick bounds check
+      if (point2D.x < minX || point2D.x > maxX ||
+          point2D.y < minY || point2D.y > maxY) {
         continue;
       }
 
-      // ✅ FILTRO 4: Dentro del polígono
+      // Verificar si está dentro del polígono
       if (isPointInPolygon(point2D, polygon2D)) {
         selectedFaces.add(i);
       }
@@ -433,9 +486,11 @@ export default function Modelado3D() {
       const mesh = new THREE.Mesh(
         geometry,
         new THREE.MeshStandardMaterial({
-          color: 0xf2f2f2,
-          roughness: 0.8,
-          metalness: 0.15
+          color: 0xf5f5f5,
+          roughness: 0.7,
+          metalness: 0.1,
+          flatShading: false,
+          side: THREE.FrontSide
         })
       );
 
@@ -457,21 +512,25 @@ export default function Modelado3D() {
         size: size.toFixed(2)
       });
 
-      // ✅ AJUSTE AUTOMÁTICO DE CÁMARA
+      // ✅ AJUSTE AUTOMÁTICO DE CÁMARA - Encuadre perfecto
       if (controls && camera) {
         controls.target.set(0, 0, 0);
         
         const fov = camera.fov * (Math.PI / 180);
         const maxDim = Math.max(sizeVector.x, sizeVector.y, sizeVector.z) * (80 / size);
-        const optimalDistance = (maxDim / Math.tan(fov / 2)) * 1.4;
+        const optimalDistance = (maxDim / Math.tan(fov / 2)) * 1.5;
         
-        const angle = Math.PI / 4;
+        // Posición con mejor ángulo de vista (ligeramente superior frontal)
+        const angle = Math.PI / 3.5;
+        const elevation = 0.65;
+        
         camera.position.set(
           optimalDistance * Math.cos(angle),
-          optimalDistance * 0.6,
+          optimalDistance * elevation,
           optimalDistance * Math.sin(angle)
         );
         
+        camera.lookAt(0, 0, 0);
         controls.update();
       }
     };
@@ -588,8 +647,8 @@ export default function Modelado3D() {
       {/* VISOR 3D */}
       <div
         ref={mountRef}
-        className="flex-1 min-h-[400px] bg-[#0a0a0a] border border-[#1f1f1f] rounded-md shadow-lg"
-        style={{ cursor: selectionMode ? 'pointer' : 'grab' }}
+        className="flex-1 min-h-[400px] bg-[#0f0f0f] border border-[#252525] rounded-md shadow-2xl"
+        style={{ cursor: selectionMode ? 'crosshair' : 'grab' }}
       ></div>
     </div>
   );
